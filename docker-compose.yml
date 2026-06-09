@@ -1,0 +1,42 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./data:/data
+    networks:
+      - internal
+    depends_on: []
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - internal
+    depends_on:
+      - app
+
+  # Phase 2 — décommenter pour activer le cron mensuel
+  # cron:
+  #   build: ./cron
+  #   restart: unless-stopped
+  #   env_file: .env
+  #   networks:
+  #     - internal
+  #   depends_on:
+  #     - app
+
+networks:
+  internal:
+
+volumes:
+  caddy_data:
+  caddy_config:
