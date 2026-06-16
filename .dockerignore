@@ -1,0 +1,30 @@
+# Dépendances et build (régénérés dans l'image)
+node_modules
+.next
+out
+build
+
+# Secrets et données locales — NE JAMAIS copier dans l'image
+.env
+.env.local
+.env.*.local
+data
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+# Client Prisma généré (regénéré via `prisma generate` au build)
+src/generated
+
+# Git / CI
+.git
+.gitignore
+
+# Divers
+*.tsbuildinfo
+next-env.d.ts
+npm-debug.log*
+.DS_Store
+README.md
+PRD.md

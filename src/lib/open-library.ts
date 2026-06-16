@@ -6,10 +6,24 @@ export interface OpenLibraryResult {
   year: number | null;
 }
 
+// Open Library's connection can be slow/flaky: TCP connect occasionally takes
+// several seconds, which can trip undici's default 10s connect timeout. We cap
+// each attempt and retry once, since a cold connect is usually fast on retry.
+async function fetchOpenLibrary(url: string, init?: RequestInit): Promise<Response | null> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      return await fetch(url, { ...init, signal: AbortSignal.timeout(8000) });
+    } catch {
+      // fall through to retry; return null after the last attempt
+    }
+  }
+  return null;
+}
+
 export async function searchBooks(query: string): Promise<OpenLibraryResult[]> {
   const url = `https://openlibrary.org/search.json?title=${encodeURIComponent(query)}&limit=8&fields=key,title,author_name,cover_i,first_publish_year`;
-  const res = await fetch(url, { next: { revalidate: 60 } });
-  if (!res.ok) return [];
+  const res = await fetchOpenLibrary(url, { next: { revalidate: 60 } });
+  if (!res || !res.ok) return [];
   const data = await res.json();
   return (data.docs ?? []).map(
     (doc: {
@@ -36,8 +50,8 @@ export async function verifyBook(
 ): Promise<{ coverUrl: string | null; openLibraryKey: string | null }> {
   const url = `https://openlibrary.org/search.json?title=${encodeURIComponent(title)}&author=${encodeURIComponent(author)}&limit=1&fields=key,cover_i`;
   try {
-    const res = await fetch(url);
-    if (!res.ok) return { coverUrl: null, openLibraryKey: null };
+    const res = await fetchOpenLibrary(url);
+    if (!res || !res.ok) return { coverUrl: null, openLibraryKey: null };
     const data = await res.json();
     const doc = data.docs?.[0];
     if (!doc) return { coverUrl: null, openLibraryKey: null };

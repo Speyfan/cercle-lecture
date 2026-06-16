@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { createAndSendVerification } from "@/lib/verification";
 
 const registerSchema = z.object({
   name: z.string().min(2).max(50),
@@ -49,6 +50,13 @@ export async function POST(req: Request) {
         role: isAdmin ? "admin" : "user",
       },
     });
+
+    // Email de vérification — best-effort : ne bloque pas l'inscription si le SMTP échoue.
+    try {
+      await createAndSendVerification(user.id, user.email, user.name);
+    } catch (err) {
+      console.error("[register] envoi de la vérification d'email échoué:", err);
+    }
 
     return NextResponse.json(
       { id: user.id, name: user.name, email: user.email },

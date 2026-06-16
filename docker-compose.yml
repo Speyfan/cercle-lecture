@@ -24,15 +24,17 @@ services:
     depends_on:
       - app
 
-  # Phase 2 — décommenter pour activer le cron mensuel
-  # cron:
-  #   build: ./cron
-  #   restart: unless-stopped
-  #   env_file: .env
-  #   networks:
-  #     - internal
-  #   depends_on:
-  #     - app
+  # Cron : newsletter mensuelle (1er du mois 08h00) + sauvegarde SQLite quotidienne (03h00).
+  cron:
+    build: ./cron
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./data:/data # accès à app.db + écriture des sauvegardes dans ./data/backups
+    networks:
+      - internal
+    depends_on:
+      - app
 
 networks:
   internal:

@@ -3,6 +3,7 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { createAndSendVerification } from "@/lib/verification";
 
 export async function GET() {
   const session = await auth();
@@ -10,7 +11,7 @@ export async function GET() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { id: true, name: true, email: true, newsletterEnabled: true, role: true },
+    select: { id: true, name: true, email: true, newsletterEnabled: true, role: true, emailVerified: true },
   });
 
   if (!user) return NextResponse.json({ error: "Introuvable." }, { status: 404 });
@@ -41,6 +42,7 @@ export async function PATCH(req: Request) {
   if (name !== undefined) updateData.name = name;
   if (newsletterEnabled !== undefined) updateData.newsletterEnabled = newsletterEnabled;
 
+  let emailChanged = false;
   if (email !== undefined) {
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing && existing.id !== session.user.id) {
@@ -49,7 +51,15 @@ export async function PATCH(req: Request) {
         { status: 409 }
       );
     }
-    updateData.email = email;
+    const current = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { email: true },
+    });
+    if (current && current.email !== email) {
+      emailChanged = true;
+      updateData.email = email;
+      updateData.emailVerified = null; // la nouvelle adresse doit être re-vérifiée
+    }
   }
 
   if (newPassword) {
@@ -75,8 +85,16 @@ export async function PATCH(req: Request) {
   const user = await prisma.user.update({
     where: { id: session.user.id },
     data: updateData,
-    select: { id: true, name: true, email: true, newsletterEnabled: true, role: true },
+    select: { id: true, name: true, email: true, newsletterEnabled: true, role: true, emailVerified: true },
   });
+
+  if (emailChanged) {
+    try {
+      await createAndSendVerification(user.id, user.email, user.name);
+    } catch (err) {
+      console.error("[profile] envoi de la vérification d'email échoué:", err);
+    }
+  }
 
   return NextResponse.json(user);
 }

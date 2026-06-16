@@ -15,11 +15,23 @@ model User {
   role              String   @default("user")
   newsletterEnabled Boolean  @default(true)
   active            Boolean  @default(true)
+  emailVerified     DateTime?
   createdAt         DateTime @default(now())
 
-  reviews         Review[]
-  recommendations Recommendation[]
-  batches         RecommendationBatch[]
+  reviews            Review[]
+  recommendations    Recommendation[]
+  batches            RecommendationBatch[]
+  verificationTokens EmailVerificationToken[]
+}
+
+model EmailVerificationToken {
+  token     String   @id
+  userId    String
+  email     String // adresse au moment de l'envoi (détecte un changement entre-temps)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Book {

@@ -20,6 +20,8 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [sending, setSending] = useState<string | null>(null); // userId ou "ALL"
+  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (session && session.user.role !== "admin") {
@@ -64,12 +66,60 @@ export default function AdminUsersPage() {
     setUpdating(null);
   }
 
+  function summarize(results: { outcome: string }[]): string {
+    const count = (o: string) => results.filter((r) => r.outcome === o).length;
+    return `Terminé : ${count("sent")} envoyé(s), ${count("welcome")} accueil(s), ${count(
+      "skipped"
+    )} ignoré(s), ${count("error")} erreur(s).`;
+  }
+
+  async function runNewsletter(userId?: string) {
+    setSending(userId ?? "ALL");
+    setNotice(null);
+    try {
+      const res = await fetch("/api/admin/newsletter/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(userId ? { userId } : {}),
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.results) {
+        setNotice(summarize(data.results));
+      } else {
+        setNotice(data?.error ?? "Échec du déclenchement.");
+      }
+    } catch {
+      setNotice("Échec du déclenchement.");
+    } finally {
+      setSending(null);
+    }
+  }
+
   return (
     <div>
-      <h1 className="text-2xl font-bold text-stone-900 mb-2">Administration — Membres</h1>
-      <p className="text-stone-500 text-sm mb-6">
+      <div className="flex items-start justify-between gap-4 mb-2 flex-wrap">
+        <h1 className="text-2xl font-bold text-stone-900">Administration — Membres</h1>
+        <button
+          onClick={() => runNewsletter()}
+          disabled={sending !== null}
+          className="bg-amber-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-amber-700 disabled:opacity-60"
+        >
+          {sending === "ALL" ? "Envoi en cours…" : "Newsletter → tous (test)"}
+        </button>
+      </div>
+      <p className="text-stone-500 text-sm mb-4">
         {users.length} membre{users.length !== 1 ? "s" : ""} au total
       </p>
+
+      {notice && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="mb-4 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm px-4 py-3"
+        >
+          {notice}
+        </div>
+      )}
 
       {loading ? (
         <div className="text-center py-12 text-stone-400">Chargement…</div>
@@ -122,8 +172,17 @@ export default function AdminUsersPage() {
                     {new Date(user.createdAt).toLocaleDateString("fr-FR")}
                   </td>
                   <td className="px-4 py-3">
-                    {user.id !== session?.user.id && (
-                      <div className="flex gap-2 justify-end">
+                    <div className="flex gap-2 justify-end">
+                      <button
+                        onClick={() => runNewsletter(user.id)}
+                        disabled={sending !== null}
+                        title="Générer et envoyer la newsletter à ce membre (test)"
+                        className="text-xs px-2 py-1 text-amber-600 hover:text-amber-800 hover:bg-amber-50 rounded disabled:opacity-50"
+                      >
+                        {sending === user.id ? "…" : "Newsletter"}
+                      </button>
+                      {user.id !== session?.user.id && (
+                        <>
                         <button
                           onClick={() => toggleRole(user)}
                           disabled={updating === user.id}
@@ -142,8 +201,9 @@ export default function AdminUsersPage() {
                         >
                           {updating === user.id ? "…" : user.active ? "Désactiver" : "Activer"}
                         </button>
-                      </div>
-                    )}
+                        </>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

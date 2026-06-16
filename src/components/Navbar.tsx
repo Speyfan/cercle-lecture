@@ -13,6 +13,7 @@ export default function Navbar() {
   const navLinks = [
     { href: "/dashboard", label: "Actualités" },
     { href: "/my-books", label: "Mes lectures" },
+    { href: "/recommendations", label: "Recommandations" },
   ];
 
   return (

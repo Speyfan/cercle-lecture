@@ -44,9 +44,11 @@ export default function BookSearch({ onSelect, initialTitle = "" }: BookSearchPr
       setLoading(true);
       try {
         const res = await fetch(`/api/books?q=${encodeURIComponent(v)}`);
-        const data = await res.json();
-        setResults(data.results ?? []);
+        const data = res.ok ? await res.json().catch(() => null) : null;
+        setResults(data?.results ?? []);
         setOpen(true);
+      } catch {
+        setResults([]);
       } finally {
         setLoading(false);
       }

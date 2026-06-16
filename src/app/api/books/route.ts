@@ -12,6 +12,11 @@ export async function GET(req: Request) {
     return NextResponse.json({ results: [] });
   }
 
-  const results = await searchBooks(q);
-  return NextResponse.json({ results });
+  try {
+    const results = await searchBooks(q);
+    return NextResponse.json({ results });
+  } catch {
+    // Never let an upstream failure surface as a non-JSON 500 to the client.
+    return NextResponse.json({ results: [] });
+  }
 }

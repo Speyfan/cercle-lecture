@@ -1,6 +1,8 @@
 import type { NextAuthConfig } from "next-auth";
 
 export const authConfig: NextAuthConfig = {
+  // Requis derrière un reverse-proxy (Caddy) : Auth.js fait confiance à l'hôte transmis.
+  trustHost: true,
   pages: {
     signIn: "/login",
     error: "/login",
@@ -10,11 +12,13 @@ export const authConfig: NextAuthConfig = {
       const isLoggedIn = !!auth?.user;
       const pathname = nextUrl.pathname;
 
-      const publicPaths = ["/login", "/register"];
+      const publicPaths = ["/login", "/register", "/verify-email"];
       const isPublic =
         publicPaths.some((p) => pathname.startsWith(p)) ||
         pathname.startsWith("/api/auth") ||
-        pathname.startsWith("/api/register");
+        pathname.startsWith("/api/register") ||
+        // Endpoint cron : protégé par CRON_SECRET, pas par une session.
+        pathname.startsWith("/internal/cron");
 
       if (isPublic) return true;
       return isLoggedIn;

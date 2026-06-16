@@ -7,6 +7,7 @@ interface ProfileData {
   name: string;
   email: string;
   newsletterEnabled: boolean;
+  emailVerified: string | null;
 }
 
 export default function ProfilePage() {
@@ -15,6 +16,7 @@ export default function ProfilePage() {
     name: "",
     email: "",
     newsletterEnabled: true,
+    emailVerified: null,
   });
   const [passwords, setPasswords] = useState({
     currentPassword: "",
@@ -33,6 +35,7 @@ export default function ProfilePage() {
         name: data.name,
         email: data.email,
         newsletterEnabled: data.newsletterEnabled,
+        emailVerified: data.emailVerified ?? null,
       });
     }
     fetchProfile();
@@ -52,6 +55,9 @@ export default function ProfilePage() {
         setMessages((m) => ({ ...m, [field]: { type: "err", text: result.error } }));
       } else {
         setMessages((m) => ({ ...m, [field]: { type: "ok", text: "Enregistré ✓" } }));
+        if (result.emailVerified !== undefined) {
+          setProfile((p) => ({ ...p, emailVerified: result.emailVerified ?? null }));
+        }
         if (result.name || result.email) {
           await updateSession({ name: result.name, email: result.email });
         }
@@ -66,6 +72,25 @@ export default function ProfilePage() {
   async function handleSaveInfo(e: React.FormEvent) {
     e.preventDefault();
     await saveField("info", { name: profile.name, email: profile.email });
+  }
+
+  async function resendVerification() {
+    setSaving("verify");
+    setMessages((m) => ({ ...m, verify: { type: "ok", text: "" } }));
+    try {
+      const res = await fetch("/api/profile/verify", { method: "POST" });
+      const result = await res.json().catch(() => ({}));
+      setMessages((m) => ({
+        ...m,
+        verify: res.ok
+          ? { type: "ok", text: "Email de vérification envoyé ✓" }
+          : { type: "err", text: result.error ?? "Échec de l'envoi." },
+      }));
+    } catch {
+      setMessages((m) => ({ ...m, verify: { type: "err", text: "Erreur réseau." } }));
+    } finally {
+      setSaving(null);
+    }
   }
 
   async function handleToggleNewsletter() {
@@ -132,6 +157,28 @@ export default function ProfilePage() {
               required
               className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400"
             />
+            <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+              {profile.emailVerified ? (
+                <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                  Adresse vérifiée ✓
+                </span>
+              ) : (
+                <>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                    Adresse non vérifiée
+                  </span>
+                  <button
+                    type="button"
+                    onClick={resendVerification}
+                    disabled={saving === "verify"}
+                    className="text-xs text-amber-700 hover:underline disabled:opacity-50"
+                  >
+                    {saving === "verify" ? "Envoi…" : "Renvoyer l'email de vérification"}
+                  </button>
+                </>
+              )}
+            </div>
+            {msg("verify")}
           </div>
           {msg("info")}
           <button
