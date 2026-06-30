@@ -65,6 +65,35 @@ export default function Navbar() {
           </button>
           {menuOpen && (
             <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-stone-200 py-1 z-50">
+              <div className="sm:hidden border-b border-stone-100 pb-1 mb-1">
+                {navLinks.map(({ href, label }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={() => setMenuOpen(false)}
+                    className={`block px-4 py-2 text-sm ${
+                      pathname.startsWith(href)
+                        ? "bg-amber-50 text-amber-700 font-medium"
+                        : "text-stone-700 hover:bg-stone-50"
+                    }`}
+                  >
+                    {label}
+                  </Link>
+                ))}
+                {session?.user.role === "admin" && (
+                  <Link
+                    href="/admin"
+                    onClick={() => setMenuOpen(false)}
+                    className={`block px-4 py-2 text-sm ${
+                      pathname.startsWith("/admin")
+                        ? "bg-amber-50 text-amber-700 font-medium"
+                        : "text-stone-700 hover:bg-stone-50"
+                    }`}
+                  >
+                    Admin
+                  </Link>
+                )}
+              </div>
               <Link
                 href="/profile"
                 className="block px-4 py-2 text-sm text-stone-700 hover:bg-stone-50"
