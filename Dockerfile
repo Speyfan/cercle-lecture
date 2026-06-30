@@ -29,13 +29,14 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Prisma CLI + migrations (+ dotenv requis par prisma.config.ts).
-# On copie le package prisma complet (avec ses .wasm) et on l'appelle via
-# build/index.js dans l'entrypoint — pas via le shim .bin/prisma (symlink
-# déréférencé par COPY, ce qui casserait la résolution des .wasm).
-COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=builder /app/node_modules/dotenv ./node_modules/dotenv
+# Prisma CLI pour `migrate deploy` au démarrage (entrypoint).
+# prisma.config.ts (obligatoire en Prisma 7 pour l'URL de la datasource) est
+# chargé via @prisma/config -> c12/jiti/effect... : un arbre de dépendances
+# trop profond pour du cherry-picking. On copie donc tout node_modules depuis
+# le builder, par-dessus celui (réduit) du standalone. La CLI est ensuite
+# appelée via node_modules/prisma/build/index.js (cf. entrypoint.sh) et non via
+# le shim .bin/prisma (symlink déréférencé par COPY, casse la résolution .wasm).
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 
