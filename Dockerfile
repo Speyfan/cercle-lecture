@@ -29,8 +29,10 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Prisma CLI + migrations (+ dotenv requis par prisma.config.ts)
-COPY --from=builder /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
+# Prisma CLI + migrations (+ dotenv requis par prisma.config.ts).
+# On copie le package prisma complet (avec ses .wasm) et on l'appelle via
+# build/index.js dans l'entrypoint — pas via le shim .bin/prisma (symlink
+# déréférencé par COPY, ce qui casserait la résolution des .wasm).
 COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/node_modules/dotenv ./node_modules/dotenv
